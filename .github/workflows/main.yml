@@ -1,0 +1,48 @@
+name: Configure Windows RDP
+
+# Trigger manually
+on:
+  workflow_dispatch:
+
+jobs:
+  enable-rdp:
+    name: Enable RDP on Windows 11 Pro
+    runs-on: windows-2022  # Windows 11 Pro environment
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Enable RDP via Registry
+        shell: pwsh
+        run: |
+          Write-Host "Enabling RDP..."
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Write-Host "RDP Enabled"
+
+      - name: Allow RDP in Firewall
+        shell: pwsh
+        run: |
+          Write-Host "Opening port 3389 in firewall..."
+          New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Protocol TCP -LocalPort 3389 -Action Allow
+          Write-Host "Firewall rule added"
+
+      - name: Disable NLA (Optional)
+        shell: pwsh
+        run: |
+          Write-Host "Disabling Network Level Authentication..."
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
+          Write-Host "NLA Disabled"
+
+      - name: Restart RDP Service
+        shell: pwsh
+        run: |
+          Write-Host "Restarting RDP service..."
+          Restart-Service -Name TermService -Force
+          Write-Host "RDP Service restarted"
+
+      - name: Confirm RDP status
+        shell: pwsh
+        run: |
+          $status = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections"
+          Write-Host "fDenyTSConnections = $($status.fDenyTSConnections)"
